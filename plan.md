@@ -1,256 +1,209 @@
-# Snake Game — Nokia Classic
+# Snake Game v2 — Menu, Themes, Difficulty, Leaderboard
 
-> **For Hermes:** Single HTML file implementation, no build tools, no framework.
+> **For Hermes:** Jules implements all features. Single file: `index.html`
 
-**Goal:** Build a classic Snake game (Nokia 3310 style) as a single self-contained HTML file that works great on both desktop and mobile.
+**Goal:** Add main menu with theme selection (classic + kids), difficulty settings (grid size + speed), and top-10 leaderboard with name entry.
 
-**Architecture:** Pure HTML5 Canvas game engine. Single file — HTML structure + CSS styling + vanilla JS game logic. No dependencies, no build step. Just open in browser.
-
-**Tech Stack:** HTML5 Canvas, vanilla JavaScript, CSS (Nokia 3310 aesthetic)
+**Architecture:** Extend existing `index.html` — add menu screen, CSS theme system via custom properties, localStorage leaderboard. Keep single-file, zero dependencies.
 
 ---
 
-## Game Specification
+## Feature Spec
 
-### Look & Feel
-- Dark green background (#9bbc0f-ish Nokia LCD green, or classic #a8cc0c)
-- Dark pixel-style snake and food on lighter green "screen"
-- Rounded faux phone bezel around the game area (Nokia tribute)
-- Pixel-style monospace font for score
-- Subtle screen glare/gradient for LCD effect
+### 1. Main Menu Screen
+- Full-screen menu overlay shown before game starts
+- Title: "SNAKE" (big, styled per theme)
+- Three buttons/sections:
+  - **🎮 Play** → starts game with selected theme + difficulty
+  - **🎨 Theme** → toggle between Classic / Kids
+  - **⚙️ Difficulty** → grid size + speed selectors
+  - **🏆 Leaderboard** → top 10 scores
+- Menu hidden during gameplay
+- After game over, show score + "Save Score" + "Menu" buttons
 
-### Gameplay
-- Grid-based movement (e.g., 20×20 grid)
-- Arrow keys on desktop, swipe + on-screen d-pad on mobile
-- Snake grows by 1 segment per food eaten
-- Score increments by 10 per food
-- Game over when snake hits wall or itself
-- Press Space / tap to restart after game over
-- Speed increases slightly as score grows (optional, for replayability)
+### 2. Theme System
+CSS custom properties on `:root` / `.theme-classic` / `.theme-kids`. Two themes:
 
-### Mobile Support
-- Viewport meta tag for proper scaling
-- Touch swipe detection (up/down/left/right)
-- On-screen directional buttons below the game area (large, tappable)
-- Canvas scales to fit screen width (max ~400px for authentic feel)
-- Prevent page scroll during gameplay
+| Property | Classic | Kids |
+|----------|---------|------|
+| `--bg` | #9bbc0f | #e8f5e9 |
+| `--snake` | #0f380f | #4caf50 |
+| `--food` | #0f380f | 🍎 (emoji or #ff5722) |
+| `--grid-line` | #8bac0f | #c8e6c9 |
+| `--text` | #0f380f | #2e7d32 |
+| `--bezel` | #2b3a42 | #ff9800 (orange) |
+| `--overlay-bg` | rgba(155,188,15,0.9) | rgba(255,152,0,0.85) |
+| `--font` | Courier New | 'Fredoka One', cursive (or Comic Sans fallback) |
+| `--snake-radius` | 0 | 4px (rounded segments) |
+| `--food-shape` | square | circle (border-radius: 50%) |
 
-### Controls
-| Input | Desktop | Mobile |
-|-------|---------|--------|
-| Up | ↑ or W | Swipe up / ▲ button |
-| Down | ↓ or S | Swipe down / ▼ button |
-| Left | ← or A | Swipe left / ◀ button |
-| Right | → or D | Swipe right / ▶ button |
-| Restart | Space | Tap "Play Again" |
+Theme saved in localStorage (`snakeTheme`).
 
----
+### 3. Difficulty Settings
+Stored in state, selectable in menu:
 
-## Implementation Plan
+| Setting | Options |
+|---------|---------|
+| Grid Size | Small (15×15) / Medium (20×20) / Large (25×25) |
+| Speed | Slow (200ms) / Normal (150ms) / Fast (100ms) |
 
-### Task 1: Create project structure and HTML shell
+Defaults: Medium + Normal. Saved in localStorage.
 
-**Objective:** Set up the single-file HTML document with basic structure, CSS, and canvas element.
-
-**Files:**
-- Create: `/opt/data/snake/index.html`
-
-**Steps:**
-
-1. Create `index.html` with HTML5 boilerplate
-2. Add viewport meta tag for mobile
-3. Add `<canvas id="game">` with fallback text
-4. Style: Nokia-inspired dark theme, phone bezel, LCD screen effect
-5. Add score display `<div id="score">`
-6. Add mobile control buttons (d-pad layout)
-7. Add game-over overlay
-
-**Verification:** Open in browser → see styled phone bezel with empty green screen, score "0", and d-pad buttons.
+### 4. Leaderboard
+- localStorage key: `snakeLeaderboard`
+- Array of `{name, score, theme, difficulty, date}`
+- Top 10 by score (descending)
+- After game over:
+  - If score > 0 and would place in top 10 (or leaderboard has <10 entries):
+    - Show name input field + "Save" button
+  - Otherwise: just show "Score not in top 10" or skip
+- Leaderboard screen in menu: scrollable list with rank, name, score, date
+- Max name length: 12 characters
+- Clear leaderboard button (with confirmation)
 
 ---
 
-### Task 2: Implement game state and core loop
+## Implementation Tasks
 
-**Objective:** Game engine — grid, snake data structure, game loop with requestAnimationFrame.
+### Task 1: CSS Theme System + Kids Theme
 
-**Files:**
-- Modify: `/opt/data/snake/index.html` (add `<script>` section)
+**Objective:** Refactor CSS to use custom properties. Define classic + kids themes. Add theme switching.
 
-**Steps:**
+**Files:** Modify `index.html` — `<style>` section
 
-1. Define constants: `GRID_SIZE = 20`, `CELL_SIZE`, `GAME_SPEED = 150` (ms per tick)
-2. Game state object:
-   ```js
-   const state = {
-     snake: [{x: 10, y: 10}, {x: 9, y: 10}, {x: 8, y: 10}], // head first
-     direction: {x: 1, y: 0},  // moving right
-     nextDirection: {x: 1, y: 0},
-     food: {x: 15, y: 10},
-     score: 0,
-     gameOver: false,
-     running: false
-   };
-   ```
-3. `spawnFood()` — random empty cell
-4. `gameLoop()` — move snake, check collisions, check food, redraw
-5. `setInterval` with `GAME_SPEED` for tick-based movement
-6. `draw()` — clear canvas, draw grid lines (subtle), draw snake segments, draw food
-7. Start/stop functions: `startGame()`, `endGame()`
+**Details:**
+1. Extract all colors/fonts/sizes into CSS custom properties on `:root`
+2. Create `.theme-classic` and `.theme-kids` class sets
+3. Kids theme: bright green+orange palette, rounded snake segments, circle food, playful font
+4. Add `setTheme(name)` JS function — applies class to `<body>`, saves to localStorage
+5. Default to classic if no saved preference
+6. Food in kids theme: draw fruit emoji (🍎) or colorful circle instead of square
 
-**Verification:** Snake appears and moves right automatically. Food visible at random position.
+**Verification:** Switch between themes via JS console → game visuals change. Reload → theme persists.
 
 ---
 
-### Task 3: Add keyboard controls and direction locking
+### Task 2: Main Menu HTML + CSS
 
-**Objective:** Arrow keys and WASD move the snake. Prevent 180° reversal (can't go from right to left instantly).
+**Objective:** Add menu screen overlay with sections for Play, Theme, Difficulty, Leaderboard.
 
-**Files:**
-- Modify: `/opt/data/snake/index.html` (update script)
+**Files:** Modify `index.html` — HTML structure + CSS styles
 
-**Steps:**
+**Details:**
+1. Add `<div id="menu">` overlay with:
+   - Big "SNAKE" title
+   - Theme selector (Classic / Kids toggle buttons)
+   - Difficulty section (grid size: S/M/L buttons, speed: Slow/Normal/Fast buttons)
+   - "PLAY" button (prominent)
+   - "LEADERBOARD" button
+2. Menu CSS: centered card, themed colors, button styling consistent with d-pad
+3. Menu shown on load, hidden during gameplay
+4. `showMenu()` / `hideMenu()` functions
+5. Difficulty values stored in `state.gridSize` and `state.baseSpeed`
 
-1. `handleKeydown(e)` listener
-2. Map: ArrowUp/W → {x:0, y:-1}, ArrowDown/S → {x:0, y:1}, ArrowLeft/A → {x:-1, y:0}, ArrowRight/D → {x:1, y:0}
-3. Direction validation: new direction must not be opposite of current (e.g., if moving right, ignore left key)
-4. Store in `state.nextDirection` (applied on next tick, prevents double-move within one tick)
-5. Prevent default on arrow keys (stop page scroll)
-
-**Verification:** Snake responds to arrow keys. Cannot reverse into itself. Cannot scroll page with arrows.
-
----
-
-### Task 4: Implement collision detection and game over
-
-**Objective:** Snake dies on wall hit or self-collision. Show game over overlay with score. Allow restart.
-
-**Files:**
-- Modify: `/opt/data/snake/index.html` (update script + CSS)
-
-**Steps:**
-
-1. `checkCollision(head)` — returns true if head out of bounds or head position overlaps any snake segment
-2. In game loop: if collision → `endGame()`
-3. `endGame()` — set `state.gameOver = true`, show overlay with "Game Over" + final score + "Play Again" button
-4. `restartGame()` — reset state to initial values, hide overlay, start loop
-5. Space bar triggers restart when game is over
-6. Style the game-over overlay (semi-transparent dark, centered text)
-
-**Verification:** Snake dies hitting wall. Snake dies hitting itself. Overlay appears. Space/button restarts game.
+**Verification:** Page loads → menu visible. Click Play → menu hides, game starts. After game over → can return to menu.
 
 ---
 
-### Task 5: Implement food eating and score
+### Task 3: Difficulty Integration
 
-**Objective:** When snake head reaches food, grow snake, increment score, spawn new food.
+**Objective:** Wire grid size and speed settings into game logic.
 
-**Files:**
-- Modify: `/opt/data/snake/index.html` (update game loop)
+**Files:** Modify `index.html` — game constants + init
 
-**Steps:**
+**Details:**
+1. Replace `const GRID_SIZE = 20` with `state.gridSize` (default 20)
+2. Grid size options: 15 (Small), 20 (Medium), 25 (Large)
+3. Replace `const baseSpeed = 150` with `state.baseSpeed` from difficulty
+4. Speed options: 200 (Slow), 150 (Normal), 100 (Fast)
+5. When grid size changes → reinitialize snake position to center, respawn food
+6. Resize canvas based on new `CELL_SIZE = floor(maxWidth / state.gridSize)`
+7. Save difficulty preferences to localStorage
 
-1. In game loop, after moving head: check if `head.x === food.x && head.y === food.y`
-2. If eating: don't remove tail (snake grows), increment score by 10, call `spawnFood()`, update score display
-3. If not eating: remove tail segment (pop from array)
-4. `spawnFood()` must avoid all current snake positions (loop until valid cell)
-5. Edge case: if snake fills entire grid (win condition) → show "You Win!" — or just handle gracefully (all cells occupied)
-
-**Verification:** Eating food grows snake by 1, score increments, new food appears in empty cell, score display updates.
-
----
-
-### Task 6: Add touch controls (swipe + d-pad buttons)
-
-**Objective:** Mobile-friendly input — swipe detection on canvas + tappable directional buttons.
-
-**Files:**
-- Modify: `/opt/data/snake/index.html` (update script + CSS + HTML)
-
-**Steps:**
-
-1. Touch swipe detection on canvas:
-   - `touchstart` → record `startX, startY`
-   - `touchend` → calculate `dx, dy`, determine primary direction
-   - Threshold: minimum 30px swipe distance
-   - Map to direction same as keyboard
-2. On-screen d-pad buttons:
-   - Four buttons in cross layout: ▲ ▼ ◀ ▶
-   - `touchstart` on each → set direction (preventDefault to avoid double-fire)
-   - Visual feedback on press (scale/opacity change)
-3. Prevent default touch behavior on game area (no zoom, no scroll)
-4. CSS: large touch targets (minimum 44×44px), good spacing
-
-**Verification:** Swipe on canvas changes direction. D-pad buttons respond to taps. No page zoom/scroll during gameplay on mobile. Both input methods respect direction locking.
+**Verification:** Select Small grid → smaller play area, snake in center. Select Fast → snake moves noticeably faster. Settings persist on reload.
 
 ---
 
-### Task 7: Responsive layout and mobile polish
+### Task 4: Leaderboard System
 
-**Objective:** Game looks great on all screen sizes. Canvas scales properly. D-pad positioned correctly.
+**Objective:** Full leaderboard — save, display, name entry flow.
 
-**Files:**
-- Modify: `/opt/data/snake/index.html` (CSS + canvas sizing)
+**Files:** Modify `index.html` — JS + HTML
 
-**Steps:**
+**Details:**
+1. `loadLeaderboard()` → reads `snakeLeaderboard` from localStorage, returns array
+2. `saveToLeaderboard(name, score, theme, difficulty)` → adds entry, sorts by score desc, keeps top 10, saves
+3. After game over (in `endGame()`):
+   - Check if score qualifies for top 10: `isTop10(score)` 
+   - If yes: show name input with "SAVE" button in overlay
+   - If no: show "Great game! Not in top 10 though" + menu button
+4. Name input: `<input maxlength="12" placeholder="Your name">`
+5. Leaderboard screen in menu:
+   - `<div id="leaderboardScreen">` with ranked list
+   - Each entry: `#1  Tom  420pts  Classic  May 23`
+   - Empty state: "No scores yet! Play a game."
+   - "CLEAR" button with confirm dialog
+   - "BACK" button to return to main menu
+6. Leaderboard entries include difficulty label and theme used
 
-1. Canvas sizing: calculate cell size dynamically based on viewport
-   - `const maxWidth = Math.min(window.innerWidth * 0.9, 400)`
-   - `CELL_SIZE = Math.floor(maxWidth / GRID_SIZE)`
-   - `canvas.width = canvas.height = CELL_SIZE * GRID_SIZE`
-2. Handle window resize → recalculate and redraw
-3. Center everything vertically and horizontally with flexbox
-4. D-pad: below canvas, centered, with clear spacing
-5. Score: above canvas, large readable font
-6. Prevent body scroll/overscroll on mobile (`overscroll-behavior: none`, `touch-action: manipulation`)
-7. Add a title "SNAKE" in Nokia-style pixel font above the game
-8. Test at common breakpoints: 375px (iPhone SE), 414px (iPhone 11), 360px (Android)
-
-**Verification:** Open on phone → game fills screen nicely, d-pad below game area, no scrolling, everything centered. Resize desktop browser → canvas rescales smoothly.
+**Verification:** Play game → score 30 → game over → if top 10, enter name → appears in leaderboard. Leaderboard persists on reload. Clear works.
 
 ---
 
-### Task 8: Speed progression and final polish
+### Task 5: Kids Theme Polish
 
-**Objective:** Add speed increase as score grows. Final visual polish and edge case handling.
+**Objective:** Make the kids theme delightful for a 5-year-old.
 
-**Files:**
-- Modify: `/opt/data/snake/index.html` (update game loop + CSS)
+**Files:** Modify `index.html` — CSS + draw logic
 
-**Steps:**
+**Details:**
+1. Kids theme colors: bright green snake on light background, orange bezel
+2. Snake segments: rounded corners (`border-radius: 4px`) with subtle gap
+3. Food: draw as emoji (🍎) or colorful circle with slight pulse animation
+4. Score display: bigger, colorful, maybe with a star emoji ⭐
+5. Game over overlay: friendly "Oh no! Try again?" text
+6. Font: try to load Fredoka One from Google Fonts (with fallback to Comic Sans)
+7. Canvas background: subtle grid dots pattern instead of solid
+8. Bezel: orange rounded frame, looks like a toy/game device
 
-1. Dynamic speed: `GAME_SPEED = Math.max(70, 150 - Math.floor(score / 50) * 5)` → starts at 150ms, gets faster every 50 points, caps at 70ms
-2. When speed changes, clear and reset interval with new speed
-3. Add subtle screen flicker/scanline effect (CSS pseudo-element overlay) for CRT/Nokia LCD vibe
-4. Add high score tracking via localStorage
-5. Handle edge case: pause game when tab loses focus (visibilitychange)
-6. Add subtle sound effects? (optional — can skip for simplicity)
-7. Final QA pass on mobile and desktop
+**Verification:** Switch to Kids theme → bright colors, rounded snake, emoji food, playful feel.
 
-**Verification:** Snake speeds up as score increases. High score persists across page reloads. Game pauses when switching tabs. Visual effects are subtle and non-distracting.
+---
+
+### Task 6: Integration & Edge Cases
+
+**Objective:** Wire everything together. Handle all states and transitions.
+
+**Files:** Modify `index.html`
+
+**Details:**
+1. Flow: Page load → Menu → (select theme/difficulty) → Play → Game Over → (save score if top 10) → Menu
+2. Leaderboard accessible from menu at any time
+3. Theme switching during gameplay? Keep it simple: only from menu (before/after game)
+4. Difficulty changes only apply on next game start
+5. Edge cases:
+   - Empty leaderboard → don't show name prompt (any score qualifies)
+   - Leaderboard full (10 entries) → only prompt if score beats #10
+   - Name input empty → don't save, show validation
+   - Name too long → trim to 12 chars
+   - localStorage full → graceful fallback
+6. Mobile: menu buttons large enough, leaderboard scrollable
+
+**Verification:** Complete flow works end-to-end. All edge cases handled.
 
 ---
 
 ## Files Summary
 
-| File | Action | Description |
-|------|--------|-------------|
-| `/opt/data/snake/index.html` | Create | Complete game — HTML + CSS + JS in one file |
+| File | Action |
+|------|--------|
+| `/opt/data/snake-game/index.html` | **Modify** — add all features |
 
-Just **one file**. Open in any browser, works offline.
+Still one file. Still zero dependencies.
 
-## Verification Checklist
+## Work Plan
 
-- [ ] Opens in Chrome, Firefox, Safari (desktop)
-- [ ] Opens in Chrome, Safari (mobile iOS/Android)
-- [ ] Arrow keys + WASD work on desktop
-- [ ] Swipe + d-pad work on mobile
-- [ ] Snake can't reverse into itself
-- [ ] Game over on wall collision
-- [ ] Game over on self collision
-- [ ] Eating food grows snake + increments score
-- [ ] Restart works (Space key + button)
-- [ ] Speed increases as score grows
-- [ ] High score saved across sessions
-- [ ] No page scroll during gameplay on mobile
-- [ ] Canvas scales correctly on resize
-- [ ] Looks like a Nokia tribute 🟢📱
+1. Update `plan.md` in repo (this document)
+2. Jules: implement all tasks in one session (reads existing code + this plan)
+3. Review PR, merge
+4. Deploy to GitHub Pages (auto-updates)
