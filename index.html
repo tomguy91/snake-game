@@ -5,6 +5,38 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>SNAKE</title>
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap');
+
+:root, .theme-classic {
+    --bg: #9bbc0f;
+    --snake: #0f380f;
+    --food: #0f380f;
+    --grid-line: #8bac0f;
+    --screen-border: #306230;
+    --container-bg: #879942;
+    --text: #0f380f;
+    --bezel: #2b3a42;
+    --brand-text: #a8cc0c;
+    --overlay-bg: rgba(155, 188, 15, 0.9);
+    --font: 'Courier New', Courier, monospace;
+    --snake-radius: 0;
+}
+
+.theme-kids {
+    --bg: #e8f5e9;
+    --snake: #4caf50;
+    --food: #ff5722;
+    --grid-line: #c8e6c9;
+    --screen-border: #4caf50;
+    --container-bg: #ffe0b2;
+    --text: #2e7d32;
+    --bezel: #ff9800;
+    --brand-text: #fff;
+    --overlay-bg: rgba(255, 152, 0, 0.85);
+    --font: 'Fredoka One', 'Comic Sans MS', cursive;
+    --snake-radius: 4px;
+}
+
 /* Reset and base styles */
 * {
     box-sizing: border-box;
@@ -17,14 +49,15 @@ body {
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    font-family: 'Courier New', Courier, monospace;
+    font-family: var(--font);
     touch-action: manipulation;
     overscroll-behavior: none;
+    transition: background-color 0.3s, font-family 0.3s;
 }
 
 /* Phone Bezel */
 .phone-bezel {
-    background-color: #2b3a42;
+    background-color: var(--bezel);
     border-radius: 40px;
     padding: 40px 20px;
     box-shadow: 0 10px 30px rgba(0,0,0,0.5), inset 0 2px 5px rgba(255,255,255,0.2);
@@ -32,32 +65,36 @@ body {
     flex-direction: column;
     align-items: center;
     max-width: 100%;
+    transition: background-color 0.3s;
 }
 
 .brand {
-    color: #a8cc0c;
+    color: var(--brand-text);
     font-weight: bold;
     font-size: 24px;
     margin-bottom: 20px;
     letter-spacing: 2px;
+    transition: color 0.3s;
 }
 
 /* Screen Area */
 .screen-container {
-    background-color: #879942; /* Darker border */
+    background-color: var(--container-bg);
     padding: 10px;
     border-radius: 10px;
     box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
     position: relative;
+    transition: background-color 0.3s;
 }
 
 .screen {
-    background-color: #9bbc0f;
-    border: 2px solid #306230;
+    background-color: var(--bg);
+    border: 2px solid var(--screen-border);
     position: relative;
     overflow: hidden;
     /* LCD glare effect */
     box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
+    transition: background-color 0.3s, border-color 0.3s;
 }
 
 .screen::after {
@@ -73,9 +110,10 @@ body {
     justify-content: space-between;
     padding: 5px 10px;
     font-weight: bold;
-    color: #0f380f;
-    background-color: #9bbc0f;
-    border-bottom: 2px solid #0f380f;
+    color: var(--text);
+    background-color: var(--bg);
+    border-bottom: 2px solid var(--text);
+    transition: color 0.3s, background-color 0.3s, border-color 0.3s;
 }
 
 canvas {
@@ -127,13 +165,14 @@ canvas {
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(155, 188, 15, 0.9);
+    background-color: var(--overlay-bg);
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     z-index: 10;
     display: none;
+    transition: background-color 0.3s;
 }
 
 .overlay.active {
@@ -143,29 +182,149 @@ canvas {
 .game-over-text {
     font-size: 24px;
     font-weight: bold;
-    color: #0f380f;
+    color: var(--text);
     margin-bottom: 10px;
     text-align: center;
 }
 
 .restart-btn {
-    background-color: #0f380f;
-    color: #9bbc0f;
-    border: 2px solid #0f380f;
+    background-color: var(--text);
+    color: var(--bg);
+    border: 2px solid var(--text);
     padding: 10px 20px;
     font-family: inherit;
     font-weight: bold;
     cursor: pointer;
     border-radius: 5px;
     margin-top: 15px;
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
 }
 
-/* Colors used:
-   Lightest: #9bbc0f (Background)
-   Light: #8bac0f
-   Dark: #306230
-   Darkest: #0f380f (Snake/Text)
-*/
+/* Additional UI Elements */
+.menu-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--overlay-bg);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    z-index: 20;
+    display: none;
+    padding: 10px;
+    overflow-y: auto;
+}
+
+.menu-overlay.active {
+    display: flex;
+}
+
+.menu-title {
+    font-size: 36px;
+    font-weight: bold;
+    color: var(--text);
+    margin: 10px 0;
+    text-align: center;
+}
+
+.menu-section {
+    width: 100%;
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.menu-label {
+    font-size: 14px;
+    font-weight: bold;
+    color: var(--text);
+    margin-bottom: 5px;
+}
+
+.button-group {
+    display: flex;
+    gap: 5px;
+}
+
+.menu-btn {
+    background-color: transparent;
+    color: var(--text);
+    border: 2px solid var(--text);
+    padding: 5px 10px;
+    font-family: inherit;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.menu-btn.selected {
+    background-color: var(--text);
+    color: var(--bg);
+}
+
+.primary-btn {
+    background-color: var(--text);
+    color: var(--bg);
+    border: 2px solid var(--text);
+    padding: 10px 30px;
+    font-family: inherit;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 5px;
+    font-size: 20px;
+    margin-bottom: 10px;
+    width: 80%;
+}
+
+.secondary-btn {
+    background-color: transparent;
+    color: var(--text);
+    border: 2px solid var(--text);
+    padding: 8px 20px;
+    font-family: inherit;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 5px;
+    font-size: 16px;
+    margin-bottom: 5px;
+    width: 80%;
+}
+
+.leaderboard-list {
+    width: 100%;
+    max-height: 180px;
+    overflow-y: auto;
+    font-size: 12px;
+    color: var(--text);
+    margin-bottom: 10px;
+    border: 1px solid var(--text);
+    padding: 5px;
+    background-color: var(--bg);
+}
+
+.leaderboard-entry {
+    display: flex;
+    justify-content: space-between;
+    padding: 2px 0;
+    border-bottom: 1px dashed var(--grid-line);
+}
+
+.name-input {
+    background-color: var(--bg);
+    color: var(--text);
+    border: 2px solid var(--text);
+    padding: 5px;
+    font-family: inherit;
+    font-weight: bold;
+    margin-bottom: 10px;
+    width: 80%;
+    text-align: center;
+}
 
 @media (max-height: 700px), (max-width: 400px) {
     .phone-bezel {
@@ -198,10 +357,58 @@ canvas {
             <canvas id="game"></canvas>
 
             <div class="overlay" id="overlay">
-                <div class="game-over-text">GAME OVER</div>
-                <div id="finalScore" style="color:#0f380f; font-weight:bold;">Score: 0</div>
-                <button class="restart-btn" id="restartBtn">PLAY AGAIN</button>
+                <div class="game-over-text" id="gameOverText">GAME OVER</div>
+                <div id="finalScore" style="color:var(--text); font-weight:bold; margin-bottom: 10px;">Score: 0</div>
+                <div id="highScoreEntry" style="display: none; flex-direction: column; align-items: center; width: 100%;">
+                    <input type="text" id="playerName" class="name-input" maxlength="12" placeholder="Your Name">
+                    <button class="primary-btn" id="saveScoreBtn">SAVE SCORE</button>
+                </div>
+                <button class="primary-btn" id="restartBtn" style="display: none;">PLAY AGAIN</button>
+                <button class="secondary-btn" id="menuBtn">MENU</button>
             </div>
+
+            <div class="menu-overlay active" id="mainMenu">
+                <div class="menu-title">SNAKE</div>
+
+                <button class="primary-btn" id="playBtn">🎮 PLAY</button>
+                <button class="secondary-btn" id="showLeaderboardBtn">🏆 LEADERBOARD</button>
+
+                <div class="menu-section" style="margin-top: 15px;">
+                    <div class="menu-label">🎨 Theme</div>
+                    <div class="button-group">
+                        <button class="menu-btn selected" id="themeClassicBtn">Classic</button>
+                        <button class="menu-btn" id="themeKidsBtn">Kids</button>
+                    </div>
+                </div>
+
+                <div class="menu-section">
+                    <div class="menu-label">⚙️ Grid Size</div>
+                    <div class="button-group">
+                        <button class="menu-btn" id="sizeSmallBtn">S</button>
+                        <button class="menu-btn selected" id="sizeMedBtn">M</button>
+                        <button class="menu-btn" id="sizeLargeBtn">L</button>
+                    </div>
+                </div>
+
+                <div class="menu-section">
+                    <div class="menu-label">⚡ Speed</div>
+                    <div class="button-group">
+                        <button class="menu-btn" id="speedSlowBtn">Slow</button>
+                        <button class="menu-btn selected" id="speedNormBtn">Norm</button>
+                        <button class="menu-btn" id="speedFastBtn">Fast</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="menu-overlay" id="leaderboardScreen">
+                <div class="menu-title" style="font-size: 24px;">🏆 TOP 10</div>
+                <div class="leaderboard-list" id="leaderboardList">
+                    <!-- Entries injected by JS -->
+                </div>
+                <button class="primary-btn" id="backToMenuBtn" style="margin-top: 10px; font-size: 16px; padding: 5px 20px;">BACK</button>
+                <button class="secondary-btn" id="clearLeaderboardBtn" style="font-size: 12px; padding: 5px 10px; border-color: transparent; text-decoration: underline;">Clear Leaderboard</button>
+            </div>
+
         </div>
     </div>
 
@@ -221,9 +428,12 @@ const highScoreDisplay = document.getElementById('highScoreDisplay');
 const overlay = document.getElementById('overlay');
 const finalScore = document.getElementById('finalScore');
 const restartBtn = document.getElementById('restartBtn');
+const mainMenu = document.getElementById('mainMenu');
+const leaderboardScreen = document.getElementById('leaderboardScreen');
+const gameOverText = document.getElementById('gameOverText');
+const highScoreEntry = document.getElementById('highScoreEntry');
+const playerNameInput = document.getElementById('playerName');
 
-// Game constants
-const GRID_SIZE = 20;
 let CELL_SIZE;
 
 // Game State
@@ -236,36 +446,66 @@ const state = {
     highScore: localStorage.getItem('snakeHighScore') || 0,
     gameOver: false,
     gameLoopId: null,
-    baseSpeed: 150,
+
+    // Configs
+    theme: localStorage.getItem('snakeTheme') || 'classic',
+    gridSize: parseInt(localStorage.getItem('snakeGridSize')) || 20,
+    baseSpeed: parseInt(localStorage.getItem('snakeSpeed')) || 150,
     currentSpeed: 150
 };
 
 highScoreDisplay.textContent = 'Hi: ' + state.highScore;
 
+function applyTheme(themeName) {
+    state.theme = themeName;
+    localStorage.setItem('snakeTheme', themeName);
+    if (themeName === 'kids') {
+        document.body.classList.add('theme-kids');
+    } else {
+        document.body.classList.remove('theme-kids');
+    }
+
+    document.getElementById('themeClassicBtn').classList.toggle('selected', themeName === 'classic');
+    document.getElementById('themeKidsBtn').classList.toggle('selected', themeName === 'kids');
+    draw();
+}
+// Apply default theme
+applyTheme(state.theme);
+
 function resize() {
     const maxWidth = Math.min(window.innerWidth * 0.9, 400);
-    CELL_SIZE = Math.floor(Math.min(maxWidth, window.innerHeight * 0.5) / GRID_SIZE);
-    canvas.width = CELL_SIZE * GRID_SIZE;
-    canvas.height = CELL_SIZE * GRID_SIZE;
+    CELL_SIZE = Math.floor(Math.min(maxWidth, window.innerHeight * 0.5) / state.gridSize);
+    canvas.width = CELL_SIZE * state.gridSize;
+    canvas.height = CELL_SIZE * state.gridSize;
     draw();
 }
 
 window.addEventListener('resize', resize);
 
 function initGame() {
+    mainMenu.classList.remove('active');
+    leaderboardScreen.classList.remove('active');
+    overlay.classList.remove('active');
+
+    // Recenter snake based on grid size
+    const centerX = Math.floor(state.gridSize / 2);
+    const centerY = Math.floor(state.gridSize / 2);
+
     state.snake = [
-        {x: 10, y: 10},
-        {x: 9, y: 10},
-        {x: 8, y: 10}
+        {x: centerX, y: centerY},
+        {x: centerX - 1, y: centerY},
+        {x: centerX - 2, y: centerY}
     ];
     state.direction = {x: 1, y: 0};
     state.nextDirection = {x: 1, y: 0};
     state.score = 0;
     state.gameOver = false;
     state.currentSpeed = state.baseSpeed;
+
     scoreDisplay.textContent = 'Score: ' + state.score;
-    overlay.classList.remove('active');
+    resize();
     spawnFood();
+
     if (state.gameLoopId) clearTimeout(state.gameLoopId);
     draw();
     scheduleNextTick();
@@ -275,8 +515,8 @@ function spawnFood() {
     let valid = false;
     while (!valid) {
         state.food = {
-            x: Math.floor(Math.random() * GRID_SIZE),
-            y: Math.floor(Math.random() * GRID_SIZE)
+            x: Math.floor(Math.random() * state.gridSize),
+            y: Math.floor(Math.random() * state.gridSize)
         };
         valid = !state.snake.some(segment => segment.x === state.food.x && segment.y === state.food.y);
     }
@@ -327,32 +567,213 @@ function update() {
 }
 
 function checkCollision(head) {
-    if (head.x < 0 || head.x >= GRID_SIZE || head.y < 0 || head.y >= GRID_SIZE) {
+    if (head.x < 0 || head.x >= state.gridSize || head.y < 0 || head.y >= state.gridSize) {
         return true;
     }
     return state.snake.some(segment => segment.x === head.x && segment.y === head.y);
 }
 
+function loadLeaderboard() {
+    try {
+        const data = localStorage.getItem('snakeLeaderboard');
+        return data ? JSON.parse(data) : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function saveToLeaderboard(name) {
+    let board = loadLeaderboard();
+    const entry = {
+        name: name || 'Anonymous',
+        score: state.score,
+        theme: state.theme,
+        difficulty: `Grid:${state.gridSize} Spd:${state.baseSpeed}`,
+        date: new Date().toLocaleDateString()
+    };
+    board.push(entry);
+    board.sort((a, b) => b.score - a.score);
+    board = board.slice(0, 10);
+    try {
+        localStorage.setItem('snakeLeaderboard', JSON.stringify(board));
+    } catch (e) {
+        console.error("Could not save to localStorage", e);
+    }
+    updateLeaderboardUI();
+}
+
+function updateLeaderboardUI() {
+    const list = document.getElementById('leaderboardList');
+    const board = loadLeaderboard();
+    list.innerHTML = '';
+
+    if (board.length === 0) {
+        list.innerHTML = '<div style="text-align:center; padding: 20px 0;">No scores yet! Play a game.</div>';
+        return;
+    }
+
+    board.forEach((entry, idx) => {
+        const div = document.createElement('div');
+        div.className = 'leaderboard-entry';
+        div.innerHTML = `
+            <span>#${idx + 1} <b>${entry.name}</b></span>
+            <span style="text-align: right;">${entry.score}pts<br><small style="font-size: 9px;">${entry.theme} | ${entry.difficulty} | ${entry.date}</small></span>
+        `;
+        list.appendChild(div);
+    });
+}
+
+function isTop10(score) {
+    if (score <= 0) return false;
+    const board = loadLeaderboard();
+    if (board.length < 10) return true;
+    return score > board[board.length - 1].score;
+}
+
 function endGame() {
     state.gameOver = true;
+    if (state.theme === 'kids') {
+        gameOverText.textContent = 'Oh no! Try again?';
+    } else {
+        gameOverText.textContent = 'GAME OVER';
+    }
     finalScore.textContent = 'Score: ' + state.score;
+
+    if (isTop10(state.score)) {
+        highScoreEntry.style.display = 'flex';
+        restartBtn.style.display = 'none';
+        playerNameInput.value = '';
+        playerNameInput.focus();
+    } else {
+        highScoreEntry.style.display = 'none';
+        restartBtn.style.display = 'block';
+    }
+
     overlay.classList.add('active');
 }
 
+document.getElementById('saveScoreBtn').addEventListener('click', () => {
+    let name = playerNameInput.value.trim().substring(0, 12);
+    if (!name) {
+        playerNameInput.style.borderColor = 'red';
+        return;
+    }
+    playerNameInput.style.borderColor = 'var(--text)';
+    saveToLeaderboard(name);
+    highScoreEntry.style.display = 'none';
+    restartBtn.style.display = 'block';
+});
+
+// Menu Logic Setup
+function updateDifficultyUI() {
+    document.getElementById('sizeSmallBtn').classList.toggle('selected', state.gridSize === 15);
+    document.getElementById('sizeMedBtn').classList.toggle('selected', state.gridSize === 20);
+    document.getElementById('sizeLargeBtn').classList.toggle('selected', state.gridSize === 25);
+
+    document.getElementById('speedSlowBtn').classList.toggle('selected', state.baseSpeed === 200);
+    document.getElementById('speedNormBtn').classList.toggle('selected', state.baseSpeed === 150);
+    document.getElementById('speedFastBtn').classList.toggle('selected', state.baseSpeed === 100);
+}
+updateDifficultyUI();
+updateLeaderboardUI();
+
+document.getElementById('playBtn').addEventListener('click', () => {
+    initGame();
+});
+
+document.getElementById('menuBtn').addEventListener('click', () => {
+    overlay.classList.remove('active');
+    mainMenu.classList.add('active');
+});
+
+document.getElementById('showLeaderboardBtn').addEventListener('click', () => {
+    updateLeaderboardUI();
+    leaderboardScreen.classList.add('active');
+    mainMenu.classList.remove('active');
+});
+
+document.getElementById('backToMenuBtn').addEventListener('click', () => {
+    leaderboardScreen.classList.remove('active');
+    mainMenu.classList.add('active');
+});
+
+document.getElementById('clearLeaderboardBtn').addEventListener('click', () => {
+    if (confirm("Are you sure you want to clear the leaderboard?")) {
+        localStorage.removeItem('snakeLeaderboard');
+        updateLeaderboardUI();
+    }
+});
+
+// Settings Handlers
+document.getElementById('themeClassicBtn').addEventListener('click', () => applyTheme('classic'));
+document.getElementById('themeKidsBtn').addEventListener('click', () => applyTheme('kids'));
+
+function setGridSize(size) {
+    state.gridSize = size;
+    localStorage.setItem('snakeGridSize', size);
+    updateDifficultyUI();
+}
+
+document.getElementById('sizeSmallBtn').addEventListener('click', () => setGridSize(15));
+document.getElementById('sizeMedBtn').addEventListener('click', () => setGridSize(20));
+document.getElementById('sizeLargeBtn').addEventListener('click', () => setGridSize(25));
+
+function setSpeed(speed) {
+    state.baseSpeed = speed;
+    localStorage.setItem('snakeSpeed', speed);
+    updateDifficultyUI();
+}
+
+document.getElementById('speedSlowBtn').addEventListener('click', () => setSpeed(200));
+document.getElementById('speedNormBtn').addEventListener('click', () => setSpeed(150));
+document.getElementById('speedFastBtn').addEventListener('click', () => setSpeed(100));
+
+
 function draw() {
+    // Get colors from CSS variables
+    const bgColor = getComputedStyle(document.body).getPropertyValue('--bg').trim() || '#9bbc0f';
+    const snakeColor = getComputedStyle(document.body).getPropertyValue('--snake').trim() || '#0f380f';
+    const foodColor = getComputedStyle(document.body).getPropertyValue('--food').trim() || '#0f380f';
+    const isKids = state.theme === 'kids';
+
     // Clear canvas
-    ctx.fillStyle = '#9bbc0f';
+    ctx.fillStyle = bgColor;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    // Draw grid dots for Kids Theme
+    if (isKids) {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+        for (let x = 0; x < state.gridSize; x++) {
+            for (let y = 0; y < state.gridSize; y++) {
+                ctx.beginPath();
+                ctx.arc(x * CELL_SIZE + CELL_SIZE / 2, y * CELL_SIZE + CELL_SIZE / 2, 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+    }
+
     // Draw snake
-    ctx.fillStyle = '#0f380f';
+    ctx.fillStyle = snakeColor;
     state.snake.forEach(segment => {
-        ctx.fillRect(segment.x * CELL_SIZE, segment.y * CELL_SIZE, CELL_SIZE - 1, CELL_SIZE - 1);
+        if (isKids) {
+            ctx.beginPath();
+            ctx.roundRect(segment.x * CELL_SIZE + 1, segment.y * CELL_SIZE + 1, CELL_SIZE - 2, CELL_SIZE - 2, 4);
+            ctx.fill();
+        } else {
+            ctx.fillRect(segment.x * CELL_SIZE, segment.y * CELL_SIZE, CELL_SIZE - 1, CELL_SIZE - 1);
+        }
     });
 
     // Draw food
-    ctx.fillStyle = '#0f380f';
-    ctx.fillRect(state.food.x * CELL_SIZE + 2, state.food.y * CELL_SIZE + 2, CELL_SIZE - 5, CELL_SIZE - 5);
+    if (isKids) {
+        ctx.font = `${CELL_SIZE - 2}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🍎', state.food.x * CELL_SIZE + CELL_SIZE / 2, state.food.y * CELL_SIZE + CELL_SIZE / 2 + 2);
+    } else {
+        ctx.fillStyle = foodColor;
+        ctx.fillRect(state.food.x * CELL_SIZE + 2, state.food.y * CELL_SIZE + 2, CELL_SIZE - 5, CELL_SIZE - 5);
+    }
 }
 
 // Input handling
@@ -363,11 +784,16 @@ function setDirection(x, y) {
 }
 
 window.addEventListener('keydown', e => {
+    // If typing in input, ignore game controls
+    if (document.activeElement === playerNameInput) {
+        return;
+    }
+
     if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) {
         e.preventDefault();
     }
 
-    if (state.gameOver && e.code === 'Space') {
+    if (state.gameOver && e.code === 'Space' && highScoreEntry.style.display !== 'flex') {
         initGame();
         return;
     }
@@ -460,7 +886,16 @@ document.addEventListener("visibilitychange", () => {
 
 // Initialize
 resize();
-initGame();
+// Don't auto-start the game. Draw an initial state for the background.
+const initialCenterX = Math.floor(state.gridSize / 2);
+const initialCenterY = Math.floor(state.gridSize / 2);
+state.snake = [
+    {x: initialCenterX, y: initialCenterY},
+    {x: initialCenterX - 1, y: initialCenterY},
+    {x: initialCenterX - 2, y: initialCenterY}
+];
+state.food = { x: -1, y: -1 }; // Hide food initially
+draw();
 
 </script>
 </body>
