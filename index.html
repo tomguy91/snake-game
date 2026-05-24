@@ -473,6 +473,80 @@ html[dir="rtl"] .lang-indicator {
 // ═══════════════════════════════════════════════
 // THEME SYSTEM
 // ═══════════════════════════════════════════════
+// ---- Spider-Man head sprite (generated once) ----
+const SPIDEY_HEAD_SRC = (function() {
+    const sz = 20;
+    const off = document.createElement('canvas');
+    off.width = sz; off.height = sz;
+    const octx = off.getContext('2d');
+
+    // Red mask base
+    octx.fillStyle = '#CC1A1A';
+    octx.beginPath();
+    octx.roundRect(1, 1, sz-2, sz-2, 3);
+    octx.fill();
+
+    // Web lines (dark red, radial)
+    octx.strokeStyle = '#8B0000';
+    octx.lineWidth = 0.8;
+    const wcx = 8, wcy = 10; // web center (offset like real mask)
+    for (let i = 0; i < 8; i++) {
+        octx.beginPath();
+        octx.moveTo(wcx, wcy);
+        const a = (Math.PI*2/8)*i;
+        octx.lineTo(wcx+Math.cos(a)*sz, wcy+Math.sin(a)*sz);
+        octx.stroke();
+    }
+    for (let r = 4; r <= 14; r += 4) {
+        octx.beginPath();
+        octx.arc(wcx, wcy, r, 0, Math.PI*2);
+        octx.stroke();
+    }
+
+    // White angular eyes (McFarlane style, facing RIGHT)
+    octx.fillStyle = '#FFFFFF';
+    octx.strokeStyle = '#111111';
+    octx.lineWidth = 1;
+
+    // Top eye - large angular teardrop
+    octx.beginPath();
+    octx.moveTo(17, 6);
+    octx.lineTo(11, 2);
+    octx.lineTo(5, 3);
+    octx.bezierCurveTo(7, 6, 10, 7, 17, 6);
+    octx.fill();
+    octx.stroke();
+
+    // Bottom eye
+    octx.beginPath();
+    octx.moveTo(17, 14);
+    octx.lineTo(11, 18);
+    octx.lineTo(5, 17);
+    octx.bezierCurveTo(7, 14, 10, 13, 17, 14);
+    octx.fill();
+    octx.stroke();
+
+    // Tiny spider emblem on forehead
+    octx.fillStyle = '#111111';
+    octx.beginPath();
+    octx.arc(wcx, wcy-3, 1.5, 0, Math.PI*2);
+    octx.fill();
+    // Spider legs (tiny lines)
+    octx.strokeStyle = '#111111';
+    octx.lineWidth = 0.5;
+    const legs = [[-2,-1],[2,-1],[-2,1],[2,1],[-1,-2],[1,-2],[-1,2],[1,2]];
+    legs.forEach(([dx,dy]) => {
+        octx.beginPath();
+        octx.moveTo(wcx, wcy-3);
+        octx.lineTo(wcx+dx, wcy-3+dy);
+        octx.stroke();
+    });
+
+    return off.toDataURL();
+})();
+const spideyHeadImg = new Image();
+spideyHeadImg.src = SPIDEY_HEAD_SRC;
+
 const THEME_DEFS = {
     classic: {
         name: { en: 'Classic', he: 'קלאסי' },
@@ -545,72 +619,56 @@ const THEME_DEFS = {
             const isBlue = (idx > 0 && idx % 4 === 0);
 
             if (isHead) {
-                // ── SPIDER-MAN HEAD ──
-                // Red mask background
-                ctx.fillStyle = '#CC1A1A';
-                ctx.beginPath();
-                ctx.roundRect(x + 1, y + 1, CS - 2, CS - 2, 4);
-                ctx.fill();
-
-                // Determine eye placement based on direction
+                // Determine direction from first two segments
                 const dir = snake.length >= 2
                     ? { x: snake[0].x - snake[1].x, y: snake[0].y - snake[1].y }
                     : { x: 1, y: 0 };
-                const faceRight = dir.x > 0 || (dir.x === 0 && dir.y !== 0);
-                const facing = faceRight ? 1 : -1;
+                let angle = 0;
+                if (dir.x < 0) angle = Math.PI;
+                else if (dir.y < 0) angle = -Math.PI/2;
+                else if (dir.y > 0) angle = Math.PI/2;
 
-                // White almond eyes
-                ctx.fillStyle = '#FFFFFF';
-                ctx.strokeStyle = '#111111';
-                ctx.lineWidth = Math.max(0.5, CS * 0.04);
-
-                // Left eye (from our perspective)
-                const eyeCx = cx + facing * r * 0.2;
-                ctx.beginPath();
-                ctx.ellipse(eyeCx - r*0.35, cy - r*0.25, r*0.4, r*0.25, facing * 0.15, 0, Math.PI*2);
-                ctx.fill();
-                ctx.stroke();
-
-                // Right eye
-                ctx.beginPath();
-                ctx.ellipse(eyeCx + r*0.35, cy - r*0.25, r*0.4, r*0.25, facing * 0.15, 0, Math.PI*2);
-                ctx.fill();
-                ctx.stroke();
-
-                // Web lines on mask (very thin, only if big enough)
-                if (CS >= 16) {
-                    ctx.strokeStyle = '#111111';
-                    ctx.lineWidth = 0.4;
-                    // Center vertical web line
-                    ctx.beginPath();
-                    ctx.moveTo(cx, y + 2);
-                    ctx.lineTo(cx, cy + r*0.2);
-                    ctx.stroke();
-                    // Horizontal web lines
-                    for (let i = 0; i < 2; i++) {
-                        const ly = y + 2 + i * (r * 0.8);
-                        ctx.beginPath();
-                        ctx.moveTo(x + 3, ly);
-                        ctx.lineTo(x + CS - 3, ly);
-                        ctx.stroke();
-                    }
-                    // Diagonal from center
-                    ctx.beginPath();
-                    ctx.moveTo(cx, cy + r*0.1);
-                    ctx.lineTo(cx - r*0.5, y + r*0.3);
-                    ctx.stroke();
-                    ctx.beginPath();
-                    ctx.moveTo(cx, cy + r*0.1);
-                    ctx.lineTo(cx + r*0.5, y + r*0.3);
-                    ctx.stroke();
-                }
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate(angle);
+                const scale = CS / 20;
+                ctx.scale(scale, scale);
+                ctx.drawImage(spideyHeadImg, -10, -10, 20, 20);
+                ctx.restore();
 
             } else if (isBlue) {
-                // ── BLUE BODY SEGMENT (Spidey costume sides) ──
+                // ── BLUE BODY SEGMENT ──
                 ctx.fillStyle = '#1A3C8E';
                 ctx.beginPath();
                 ctx.roundRect(x + 1, y + 1, CS - 2, CS - 2, 3);
                 ctx.fill();
+
+                // Web pattern on blue segments
+                if (CS >= 12) {
+                    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+                    ctx.lineWidth = 0.6;
+                    const pad = 3;
+                    // Vertical
+                    ctx.beginPath();
+                    ctx.moveTo(cx, y + pad);
+                    ctx.lineTo(cx, y + CS - pad);
+                    ctx.stroke();
+                    // Horizontal
+                    ctx.beginPath();
+                    ctx.moveTo(x + pad, cy);
+                    ctx.lineTo(x + CS - pad, cy);
+                    ctx.stroke();
+                    // Diagonals
+                    ctx.beginPath();
+                    ctx.moveTo(x + pad, y + pad);
+                    ctx.lineTo(x + CS - pad, y + CS - pad);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(x + CS - pad, y + pad);
+                    ctx.lineTo(x + pad, y + CS - pad);
+                    ctx.stroke();
+                }
+
                 // Subtle highlight
                 if (CS >= 14) {
                     ctx.fillStyle = 'rgba(255,255,255,0.15)';
@@ -624,10 +682,32 @@ const THEME_DEFS = {
                 ctx.roundRect(x + 1, y + 1, CS - 2, CS - 2, 3);
                 ctx.fill();
 
-                // Web pattern on red segments
+                // Spider emblem on chest segments 1-3
+                if (idx >= 1 && idx <= 3 && CS >= 12) {
+                    ctx.fillStyle = '#111111';
+                    const scx = cx;
+                    const scy = cy;
+                    const bodyR = Math.max(1, CS * 0.08);
+                    ctx.beginPath();
+                    ctx.arc(scx, scy, bodyR, 0, Math.PI*2);
+                    ctx.fill();
+                    // Legs
+                    ctx.strokeStyle = '#111111';
+                    ctx.lineWidth = 0.8;
+                    const legLen = bodyR * 2;
+                    for (let li = 0; li < 8; li++) {
+                        const la = (Math.PI*2/8)*li;
+                        ctx.beginPath();
+                        ctx.moveTo(scx, scy);
+                        ctx.lineTo(scx + Math.cos(la)*legLen, scy + Math.sin(la)*legLen);
+                        ctx.stroke();
+                    }
+                }
+
+                // Web pattern (thicker lines)
                 if (CS >= 12) {
                     ctx.strokeStyle = '#8B0000';
-                    ctx.lineWidth = 0.4;
+                    ctx.lineWidth = 1;
                     const pad = 3;
                     // Vertical
                     ctx.beginPath();
@@ -652,54 +732,83 @@ const THEME_DEFS = {
             }
         },
         drawFood: function(ctx, food, CS) {
-            const cx = food.x * CS + CS/2, cy = food.y * CS + CS/2;
-            const r = CS/2 - 2;
-
-            // Glowing web center
-            ctx.fillStyle = 'rgba(255,255,255,0.15)';
-            ctx.beginPath();
-            ctx.arc(cx, cy, r + 2, 0, Math.PI*2);
-            ctx.fill();
-
-            // White web: spokes
-            ctx.strokeStyle = '#E8E8E8';
-            ctx.lineWidth = Math.max(1, CS * 0.08);
-            const spokes = 8;
-            for (let i = 0; i < spokes; i++) {
-                const angle = (Math.PI * 2 / spokes) * i;
-                ctx.beginPath();
-                ctx.moveTo(cx, cy);
-                ctx.lineTo(cx + Math.cos(angle) * r, cy + Math.sin(angle) * r);
-                ctx.stroke();
-            }
-
-            // Concentric web rings
-            ctx.lineWidth = Math.max(1, CS * 0.06);
-            const rings = Math.max(2, Math.floor(r / 3));
-            for (let i = 1; i <= rings; i++) {
-                const rr = (r / rings) * i;
-                ctx.beginPath();
-                ctx.arc(cx, cy, rr, 0, Math.PI*2);
-                ctx.stroke();
-            }
-
-            // Center dot
-            ctx.fillStyle = '#FFFFFF';
-            ctx.beginPath();
-            ctx.arc(cx, cy, Math.max(1.5, CS * 0.1), 0, Math.PI*2);
-            ctx.fill();
+            ctx.font = `${CS - 2}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🕷️', food.x * CS + CS/2, food.y * CS + CS/2 + 2);
         },
         drawBackground: function(ctx, gridSize, CS) {
-            // Subtle starfield effect on dark background
-            ctx.fillStyle = 'rgba(255,255,255,0.03)';
-            const starSeed = 42;
-            for (let i = 0; i < gridSize * 1.5; i++) {
-                const sx = ((i * 137 + starSeed) % (gridSize * 100)) / 100;
-                const sy = ((i * 251 + starSeed * 3) % (gridSize * 100)) / 100;
-                ctx.beginPath();
-                ctx.arc(sx * CS, sy * CS, Math.max(0.5, CS * 0.04), 0, Math.PI*2);
-                ctx.fill();
+            const W = canvas.width;
+            const H = canvas.height;
+
+            // Moon in top-right
+            ctx.fillStyle = 'rgba(255, 255, 230, 0.9)';
+            ctx.beginPath();
+            ctx.arc(W - CS * 2, CS * 2, CS * 1.2, 0, Math.PI*2);
+            ctx.fill();
+
+            // NYC skyline at bottom 15%
+            const skylineY = H * 0.85;
+            const buildingColor = '#1a1a3e';
+            ctx.fillStyle = buildingColor;
+            const buildingCount = Math.floor(W / (CS * 2));
+            for (let i = 0; i < buildingCount; i++) {
+                const bw = CS * 1.5 + (i % 3) * CS * 0.5;
+                const bh = (H - skylineY) * (0.3 + (i % 4) * 0.25);
+                const bx = i * (W / buildingCount);
+                ctx.fillRect(bx, H - bh, bw, bh);
             }
+
+            // Yellow window dots
+            ctx.fillStyle = 'rgba(255, 255, 0, 0.6)';
+            for (let i = 0; i < buildingCount; i++) {
+                const bw = CS * 1.5 + (i % 3) * CS * 0.5;
+                const bh = (H - skylineY) * (0.3 + (i % 4) * 0.25);
+                const bx = i * (W / buildingCount);
+                const cols = Math.max(1, Math.floor(bw / (CS * 0.4)));
+                const rows = Math.max(1, Math.floor(bh / (CS * 0.6)));
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        if ((i + r + c) % 3 === 0) {
+                            const wx = bx + c * (bw / cols) + (bw / cols) * 0.3;
+                            const wy = H - bh + r * (bh / rows) + (bh / rows) * 0.3;
+                            ctx.beginPath();
+                            ctx.arc(wx, wy, CS * 0.08, 0, Math.PI*2);
+                            ctx.fill();
+                        }
+                    }
+                }
+            }
+
+            // Corner webs (subtle gray)
+            ctx.strokeStyle = 'rgba(200, 200, 200, 0.15)';
+            ctx.lineWidth = 0.5;
+            const webRadius = CS * 3;
+            const corners = [
+                {x: 0, y: 0, startAngle: 0, endAngle: Math.PI/2},
+                {x: W, y: 0, startAngle: Math.PI/2, endAngle: Math.PI},
+                {x: W, y: H, startAngle: Math.PI, endAngle: Math.PI*1.5},
+                {x: 0, y: H, startAngle: Math.PI*1.5, endAngle: Math.PI*2}
+            ];
+            corners.forEach(corner => {
+                const cx = corner.x;
+                const cy = corner.y;
+                // Spokes
+                for (let i = 0; i < 6; i++) {
+                    const angle = corner.startAngle + (corner.endAngle - corner.startAngle) * (i / 5);
+                    ctx.beginPath();
+                    ctx.moveTo(cx, cy);
+                    ctx.lineTo(cx + Math.cos(angle) * webRadius, cy + Math.sin(angle) * webRadius);
+                    ctx.stroke();
+                }
+                // Arcs
+                for (let r = 1; r <= 3; r++) {
+                    const rr = (webRadius / 3) * r;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, rr, corner.startAngle, corner.endAngle);
+                    ctx.stroke();
+                }
+            });
         }
     }
 };
