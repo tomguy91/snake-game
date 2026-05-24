@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>SNAKE</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Heebo:wght@400;700;800&display=swap');
 
 :root, .theme-classic {
     --bg: #9bbc0f;
@@ -35,6 +35,35 @@
     --overlay-bg: rgba(255, 152, 0, 0.85);
     --font: 'Fredoka One', 'Comic Sans MS', cursive;
     --snake-radius: 4px;
+}
+
+.theme-spiderman {
+    --bg: #0D1117;
+    --snake: #CC1A1A;
+    --food: #E8E8E8;
+    --grid-line: #1a1a2e;
+    --screen-border: #CC1A1A;
+    --container-bg: #1a1a2e;
+    --text: #FFFFFF;
+    --bezel: #CC1A1A;
+    --brand-text: #FFFFFF;
+    --overlay-bg: rgba(13, 17, 23, 0.92);
+    --font: 'Heebo', 'Arial', sans-serif;
+    --snake-radius: 2px;
+}
+
+/* RTL overrides */
+html[dir="rtl"] body {
+    direction: rtl;
+    font-family: var(--font-rtl, var(--font));
+}
+
+html[dir="rtl"] .header {
+    flex-direction: row-reverse;
+}
+
+html[dir="rtl"] .leaderboard-entry {
+    flex-direction: row-reverse;
 }
 
 /* Reset and base styles */
@@ -326,6 +355,17 @@ canvas {
     text-align: center;
 }
 
+.lang-indicator {
+    font-size: 12px;
+    opacity: 0.7;
+    margin-left: 4px;
+}
+
+html[dir="rtl"] .lang-indicator {
+    margin-left: 0;
+    margin-right: 4px;
+}
+
 @media (max-height: 700px), (max-width: 400px) {
     .phone-bezel {
         padding: 20px 10px;
@@ -346,7 +386,7 @@ canvas {
 <body>
 
 <div class="phone-bezel">
-    <div class="brand">SNAKE</div>
+    <div class="brand" id="brandTitle">SNAKE</div>
 
     <div class="screen-container">
         <div class="screen" id="screen">
@@ -368,21 +408,22 @@ canvas {
             </div>
 
             <div class="menu-overlay active" id="mainMenu">
-                <div class="menu-title">SNAKE</div>
+                <div class="menu-title" id="menuTitle">SNAKE</div>
 
                 <button class="primary-btn" id="playBtn">🎮 PLAY</button>
                 <button class="secondary-btn" id="showLeaderboardBtn">🏆 LEADERBOARD</button>
 
                 <div class="menu-section" style="margin-top: 15px;">
-                    <div class="menu-label">🎨 Theme</div>
-                    <div class="button-group">
-                        <button class="menu-btn selected" id="themeClassicBtn">Classic</button>
-                        <button class="menu-btn" id="themeKidsBtn">Kids</button>
+                    <div class="menu-label" id="themeLabel">🎨 Theme</div>
+                    <div class="button-group" id="themeButtons">
+                        <button class="menu-btn selected" data-theme="classic">Classic</button>
+                        <button class="menu-btn" data-theme="kids">Kids</button>
+                        <button class="menu-btn" data-theme="spiderman">🕷️ Spider-Man</button>
                     </div>
                 </div>
 
                 <div class="menu-section">
-                    <div class="menu-label">⚙️ Grid Size</div>
+                    <div class="menu-label" id="gridLabel">⚙️ Grid Size</div>
                     <div class="button-group">
                         <button class="menu-btn" id="sizeSmallBtn">S</button>
                         <button class="menu-btn selected" id="sizeMedBtn">M</button>
@@ -391,17 +432,25 @@ canvas {
                 </div>
 
                 <div class="menu-section">
-                    <div class="menu-label">⚡ Speed</div>
+                    <div class="menu-label" id="speedLabel">⚡ Speed</div>
                     <div class="button-group">
                         <button class="menu-btn" id="speedSlowBtn">Slow</button>
                         <button class="menu-btn selected" id="speedNormBtn">Norm</button>
                         <button class="menu-btn" id="speedFastBtn">Fast</button>
                     </div>
                 </div>
+
+                <div class="menu-section">
+                    <div class="menu-label" id="langLabel">🌐 Language</div>
+                    <div class="button-group">
+                        <button class="menu-btn selected" id="langEnBtn">EN</button>
+                        <button class="menu-btn" id="langHeBtn">עב</button>
+                    </div>
+                </div>
             </div>
 
             <div class="menu-overlay" id="leaderboardScreen">
-                <div class="menu-title" style="font-size: 24px;">🏆 TOP 10</div>
+                <div class="menu-title" style="font-size: 24px;" id="lbTitle">🏆 TOP 10</div>
                 <div class="leaderboard-list" id="leaderboardList">
                     <!-- Entries injected by JS -->
                 </div>
@@ -421,6 +470,305 @@ canvas {
 </div>
 
 <script>
+// ═══════════════════════════════════════════════
+// THEME SYSTEM
+// ═══════════════════════════════════════════════
+const THEME_DEFS = {
+    classic: {
+        name: { en: 'Classic', he: 'קלאסי' },
+        emoji: '',
+        cssClass: '',
+        headShape: 'square',
+    },
+    kids: {
+        name: { en: 'Kids', he: 'ילדים' },
+        emoji: '🧒',
+        cssClass: 'theme-kids',
+        headShape: 'rounded',
+        drawSegment: function(ctx, seg, idx, snake, CS) {
+            const x = seg.x * CS, y = seg.y * CS;
+            if (idx === 0) {
+                // Head: slightly bigger rounded rect with eyes
+                ctx.fillStyle = getCSS('--snake');
+                ctx.beginPath();
+                ctx.roundRect(x + 1, y + 1, CS - 2, CS - 2, 6);
+                ctx.fill();
+                // Eyes
+                ctx.fillStyle = '#FFF';
+                ctx.beginPath();
+                ctx.arc(x + CS*0.35, y + CS*0.35, CS*0.15, 0, Math.PI*2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(x + CS*0.65, y + CS*0.35, CS*0.15, 0, Math.PI*2);
+                ctx.fill();
+                ctx.fillStyle = '#000';
+                ctx.beginPath();
+                ctx.arc(x + CS*0.35, y + CS*0.35, CS*0.06, 0, Math.PI*2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(x + CS*0.65, y + CS*0.35, CS*0.06, 0, Math.PI*2);
+                ctx.fill();
+            } else {
+                ctx.fillStyle = getCSS('--snake');
+                ctx.beginPath();
+                ctx.roundRect(x + 1, y + 1, CS - 2, CS - 2, 5);
+                ctx.fill();
+            }
+        },
+        drawFood: function(ctx, food, CS) {
+            ctx.font = `${CS - 2}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🍎', food.x * CS + CS/2, food.y * CS + CS/2 + 2);
+        },
+        drawBackground: function(ctx, gridSize, CS) {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            for (let x = 0; x < gridSize; x++) {
+                for (let y = 0; y < gridSize; y++) {
+                    ctx.beginPath();
+                    ctx.arc(x * CS + CS/2, y * CS + CS/2, 2, 0, Math.PI*2);
+                    ctx.fill();
+                }
+            }
+        }
+    },
+    spiderman: {
+        name: { en: 'Spider-Man', he: 'ספיידרמן' },
+        emoji: '🕷️',
+        cssClass: 'theme-spiderman',
+        headShape: 'mask',
+        drawSegment: function(ctx, seg, idx, snake, CS) {
+            const x = seg.x * CS, y = seg.y * CS;
+            const cx = x + CS/2, cy = y + CS/2;
+            const r = CS/2 - 1;
+            const isHead = (idx === 0);
+            const isBlue = (idx > 0 && idx % 4 === 0);
+
+            if (isHead) {
+                // ── SPIDER-MAN HEAD ──
+                // Red mask background
+                ctx.fillStyle = '#CC1A1A';
+                ctx.beginPath();
+                ctx.roundRect(x + 1, y + 1, CS - 2, CS - 2, 4);
+                ctx.fill();
+
+                // Determine eye placement based on direction
+                const dir = snake.length >= 2
+                    ? { x: snake[0].x - snake[1].x, y: snake[0].y - snake[1].y }
+                    : { x: 1, y: 0 };
+                const faceRight = dir.x > 0 || (dir.x === 0 && dir.y !== 0);
+                const facing = faceRight ? 1 : -1;
+
+                // White almond eyes
+                ctx.fillStyle = '#FFFFFF';
+                ctx.strokeStyle = '#111111';
+                ctx.lineWidth = Math.max(0.5, CS * 0.04);
+
+                // Left eye (from our perspective)
+                const eyeCx = cx + facing * r * 0.2;
+                ctx.beginPath();
+                ctx.ellipse(eyeCx - r*0.35, cy - r*0.25, r*0.4, r*0.25, facing * 0.15, 0, Math.PI*2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Right eye
+                ctx.beginPath();
+                ctx.ellipse(eyeCx + r*0.35, cy - r*0.25, r*0.4, r*0.25, facing * 0.15, 0, Math.PI*2);
+                ctx.fill();
+                ctx.stroke();
+
+                // Web lines on mask (very thin, only if big enough)
+                if (CS >= 16) {
+                    ctx.strokeStyle = '#111111';
+                    ctx.lineWidth = 0.4;
+                    // Center vertical web line
+                    ctx.beginPath();
+                    ctx.moveTo(cx, y + 2);
+                    ctx.lineTo(cx, cy + r*0.2);
+                    ctx.stroke();
+                    // Horizontal web lines
+                    for (let i = 0; i < 2; i++) {
+                        const ly = y + 2 + i * (r * 0.8);
+                        ctx.beginPath();
+                        ctx.moveTo(x + 3, ly);
+                        ctx.lineTo(x + CS - 3, ly);
+                        ctx.stroke();
+                    }
+                    // Diagonal from center
+                    ctx.beginPath();
+                    ctx.moveTo(cx, cy + r*0.1);
+                    ctx.lineTo(cx - r*0.5, y + r*0.3);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(cx, cy + r*0.1);
+                    ctx.lineTo(cx + r*0.5, y + r*0.3);
+                    ctx.stroke();
+                }
+
+            } else if (isBlue) {
+                // ── BLUE BODY SEGMENT (Spidey costume sides) ──
+                ctx.fillStyle = '#1A3C8E';
+                ctx.beginPath();
+                ctx.roundRect(x + 1, y + 1, CS - 2, CS - 2, 3);
+                ctx.fill();
+                // Subtle highlight
+                if (CS >= 14) {
+                    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+                    ctx.fillRect(x + 2, y + 2, CS - 4, (CS - 4) * 0.4);
+                }
+
+            } else {
+                // ── RED BODY SEGMENT with web pattern ──
+                ctx.fillStyle = '#CC1A1A';
+                ctx.beginPath();
+                ctx.roundRect(x + 1, y + 1, CS - 2, CS - 2, 3);
+                ctx.fill();
+
+                // Web pattern on red segments
+                if (CS >= 12) {
+                    ctx.strokeStyle = '#8B0000';
+                    ctx.lineWidth = 0.4;
+                    const pad = 3;
+                    // Vertical
+                    ctx.beginPath();
+                    ctx.moveTo(cx, y + pad);
+                    ctx.lineTo(cx, y + CS - pad);
+                    ctx.stroke();
+                    // Horizontal
+                    ctx.beginPath();
+                    ctx.moveTo(x + pad, cy);
+                    ctx.lineTo(x + CS - pad, cy);
+                    ctx.stroke();
+                    // Diagonals (X pattern)
+                    ctx.beginPath();
+                    ctx.moveTo(x + pad, y + pad);
+                    ctx.lineTo(x + CS - pad, y + CS - pad);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(x + CS - pad, y + pad);
+                    ctx.lineTo(x + pad, y + CS - pad);
+                    ctx.stroke();
+                }
+            }
+        },
+        drawFood: function(ctx, food, CS) {
+            const cx = food.x * CS + CS/2, cy = food.y * CS + CS/2;
+            const r = CS/2 - 2;
+
+            // Glowing web center
+            ctx.fillStyle = 'rgba(255,255,255,0.15)';
+            ctx.beginPath();
+            ctx.arc(cx, cy, r + 2, 0, Math.PI*2);
+            ctx.fill();
+
+            // White web: spokes
+            ctx.strokeStyle = '#E8E8E8';
+            ctx.lineWidth = Math.max(1, CS * 0.08);
+            const spokes = 8;
+            for (let i = 0; i < spokes; i++) {
+                const angle = (Math.PI * 2 / spokes) * i;
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.lineTo(cx + Math.cos(angle) * r, cy + Math.sin(angle) * r);
+                ctx.stroke();
+            }
+
+            // Concentric web rings
+            ctx.lineWidth = Math.max(1, CS * 0.06);
+            const rings = Math.max(2, Math.floor(r / 3));
+            for (let i = 1; i <= rings; i++) {
+                const rr = (r / rings) * i;
+                ctx.beginPath();
+                ctx.arc(cx, cy, rr, 0, Math.PI*2);
+                ctx.stroke();
+            }
+
+            // Center dot
+            ctx.fillStyle = '#FFFFFF';
+            ctx.beginPath();
+            ctx.arc(cx, cy, Math.max(1.5, CS * 0.1), 0, Math.PI*2);
+            ctx.fill();
+        },
+        drawBackground: function(ctx, gridSize, CS) {
+            // Subtle starfield effect on dark background
+            ctx.fillStyle = 'rgba(255,255,255,0.03)';
+            const starSeed = 42;
+            for (let i = 0; i < gridSize * 1.5; i++) {
+                const sx = ((i * 137 + starSeed) % (gridSize * 100)) / 100;
+                const sy = ((i * 251 + starSeed * 3) % (gridSize * 100)) / 100;
+                ctx.beginPath();
+                ctx.arc(sx * CS, sy * CS, Math.max(0.5, CS * 0.04), 0, Math.PI*2);
+                ctx.fill();
+            }
+        }
+    }
+};
+
+function getCSS(varName) {
+    return getComputedStyle(document.body).getPropertyValue(varName).trim() || '#000';
+}
+
+// ═══════════════════════════════════════════════
+// LANGUAGE / i18n
+// ═══════════════════════════════════════════════
+const STR = {
+    en: {
+        title: 'SNAKE',
+        play: '🎮 PLAY',
+        leaderboard: '🏆 LEADERBOARD',
+        themeLabel: '🎨 Theme',
+        gridLabel: '⚙️ Grid Size',
+        speedLabel: '⚡ Speed',
+        slow: 'Slow',
+        norm: 'Norm',
+        fast: 'Fast',
+        gameOver: 'GAME OVER',
+        kidsGameOver: 'Oh no! Try again?',
+        scorePrefix: 'Score: ',
+        hiPrefix: 'Hi: ',
+        finalScorePrefix: 'Score: ',
+        yourName: 'Your Name',
+        saveScore: 'SAVE SCORE',
+        playAgain: 'PLAY AGAIN',
+        menu: 'MENU',
+        back: 'BACK',
+        clearLB: 'Clear Leaderboard',
+        noScores: 'No scores yet! Play a game.',
+        top10: '🏆 TOP 10',
+        confirmClear: 'Are you sure you want to clear the leaderboard?',
+        langLabel: '🌐 Language',
+    },
+    he: {
+        title: 'סנייק',
+        play: '🎮 שחק',
+        leaderboard: '🏆 טבלת שיאים',
+        themeLabel: '🎨 ערכת נושא',
+        gridLabel: '⚙️ גודל לוח',
+        speedLabel: '⚡ מהירות',
+        slow: 'איטי',
+        norm: 'רגיל',
+        fast: 'מהיר',
+        gameOver: 'נגמר המשחק!',
+        kidsGameOver: 'אוי לא! ננסה שוב?',
+        scorePrefix: 'ניקוד: ',
+        hiPrefix: 'שיא: ',
+        finalScorePrefix: 'ניקוד: ',
+        yourName: 'השם שלך',
+        saveScore: 'שמור ניקוד',
+        playAgain: 'שחק שוב',
+        menu: 'תפריט',
+        back: 'חזור',
+        clearLB: 'נקה טבלה',
+        noScores: 'אין תוצאות עדיין! שחק משחק.',
+        top10: '🏆 טופ 10',
+        confirmClear: 'בטוח שברצונך לנקות את טבלת השיאים?',
+        langLabel: '🌐 שפה',
+    }
+};
+
+// ═══════════════════════════════════════════════
+// DOM REFS
+// ═══════════════════════════════════════════════
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const scoreDisplay = document.getElementById('scoreDisplay');
@@ -436,7 +784,9 @@ const playerNameInput = document.getElementById('playerName');
 
 let CELL_SIZE;
 
-// Game State
+// ═══════════════════════════════════════════════
+// GAME STATE
+// ═══════════════════════════════════════════════
 const state = {
     snake: [],
     direction: {x: 1, y: 0},
@@ -451,27 +801,123 @@ const state = {
     theme: localStorage.getItem('snakeTheme') || 'classic',
     gridSize: parseInt(localStorage.getItem('snakeGridSize')) || 20,
     baseSpeed: parseInt(localStorage.getItem('snakeSpeed')) || 150,
-    currentSpeed: 150
+    currentSpeed: 150,
+    language: localStorage.getItem('snakeLanguage') || 'en',
 };
 
-highScoreDisplay.textContent = 'Hi: ' + state.highScore;
+highScoreDisplay.textContent = STR[state.language].hiPrefix + state.highScore;
 
+// ═══════════════════════════════════════════════
+// UI HELPERS
+// ═══════════════════════════════════════════════
+function t(key) {
+    return STR[state.language][key] || STR['en'][key] || key;
+}
+
+function themeName(themeKey) {
+    const def = THEME_DEFS[themeKey];
+    if (!def) return themeKey;
+    return def.name[state.language] || def.name['en'] || themeKey;
+}
+
+function updateAllUI() {
+    const lang = state.language;
+
+    // Set RTL
+    document.documentElement.setAttribute('dir', lang === 'he' ? 'rtl' : 'ltr');
+    document.documentElement.setAttribute('lang', lang === 'he' ? 'he' : 'en');
+
+    // Update RTL font override for Hebrew
+    if (lang === 'he') {
+        document.documentElement.style.setProperty('--font-rtl', "'Heebo', 'Arial', sans-serif");
+    } else {
+        document.documentElement.style.setProperty('--font-rtl', '');
+    }
+
+    // Brand / menu title
+    document.getElementById('brandTitle').textContent = t('title');
+    document.getElementById('menuTitle').textContent = t('title');
+
+    // Buttons
+    document.getElementById('playBtn').textContent = t('play');
+    document.getElementById('showLeaderboardBtn').textContent = t('leaderboard');
+    document.getElementById('restartBtn').textContent = t('playAgain');
+    document.getElementById('menuBtn').textContent = t('menu');
+    document.getElementById('backToMenuBtn').textContent = t('back');
+    document.getElementById('clearLeaderboardBtn').textContent = t('clearLB');
+    document.getElementById('saveScoreBtn').textContent = t('saveScore');
+    playerNameInput.placeholder = t('yourName');
+
+    // Labels
+    document.getElementById('themeLabel').textContent = t('themeLabel');
+    document.getElementById('gridLabel').textContent = t('gridLabel');
+    document.getElementById('speedLabel').textContent = t('speedLabel');
+    document.getElementById('langLabel').textContent = t('langLabel');
+    document.getElementById('lbTitle').textContent = t('top10');
+
+    // Speed buttons
+    document.getElementById('speedSlowBtn').textContent = t('slow');
+    document.getElementById('speedNormBtn').textContent = t('norm');
+    document.getElementById('speedFastBtn').textContent = t('fast');
+
+    // Header
+    scoreDisplay.textContent = t('scorePrefix') + state.score;
+    highScoreDisplay.textContent = t('hiPrefix') + state.highScore;
+
+    // Language buttons
+    document.getElementById('langEnBtn').classList.toggle('selected', lang === 'en');
+    document.getElementById('langHeBtn').classList.toggle('selected', lang === 'he');
+
+    // Theme button labels
+    document.querySelectorAll('#themeButtons .menu-btn').forEach(btn => {
+        const themeKey = btn.dataset.theme;
+        const def = THEME_DEFS[themeKey];
+        if (def) {
+            const emoji = def.emoji ? def.emoji + ' ' : '';
+            btn.textContent = emoji + themeName(themeKey);
+        }
+    });
+}
+
+function setLanguage(lang) {
+    state.language = lang;
+    localStorage.setItem('snakeLanguage', lang);
+    updateAllUI();
+    updateLeaderboardUI();
+    if (!state.gameOver && state.snake.length > 0) {
+        scoreDisplay.textContent = t('scorePrefix') + state.score;
+        highScoreDisplay.textContent = t('hiPrefix') + state.highScore;
+    }
+    draw();
+}
+
+// ═══════════════════════════════════════════════
+// THEME LOGIC
+// ═══════════════════════════════════════════════
 function applyTheme(themeName) {
     state.theme = themeName;
     localStorage.setItem('snakeTheme', themeName);
-    if (themeName === 'kids') {
-        document.body.classList.add('theme-kids');
-    } else {
-        document.body.classList.remove('theme-kids');
+
+    // Remove all theme classes
+    document.body.classList.remove('theme-classic', 'theme-kids', 'theme-spiderman');
+
+    // Apply new theme class
+    const def = THEME_DEFS[themeName];
+    if (def && def.cssClass) {
+        document.body.classList.add(def.cssClass);
     }
 
-    document.getElementById('themeClassicBtn').classList.toggle('selected', themeName === 'classic');
-    document.getElementById('themeKidsBtn').classList.toggle('selected', themeName === 'kids');
+    // Update theme buttons
+    document.querySelectorAll('#themeButtons .menu-btn').forEach(btn => {
+        btn.classList.toggle('selected', btn.dataset.theme === themeName);
+    });
+
     draw();
 }
-// Apply default theme
-applyTheme(state.theme);
 
+// ═══════════════════════════════════════════════
+// GAME LOGIC
+// ═══════════════════════════════════════════════
 function resize() {
     const maxWidth = Math.min(window.innerWidth * 0.9, 400);
     CELL_SIZE = Math.floor(Math.min(maxWidth, window.innerHeight * 0.5) / state.gridSize);
@@ -487,7 +933,6 @@ function initGame() {
     leaderboardScreen.classList.remove('active');
     overlay.classList.remove('active');
 
-    // Recenter snake based on grid size
     const centerX = Math.floor(state.gridSize / 2);
     const centerY = Math.floor(state.gridSize / 2);
 
@@ -502,7 +947,7 @@ function initGame() {
     state.gameOver = false;
     state.currentSpeed = state.baseSpeed;
 
-    scoreDisplay.textContent = 'Score: ' + state.score;
+    scoreDisplay.textContent = t('scorePrefix') + state.score;
     resize();
     spawnFood();
 
@@ -553,12 +998,12 @@ function update() {
 
     if (head.x === state.food.x && head.y === state.food.y) {
         state.score += 10;
-        scoreDisplay.textContent = 'Score: ' + state.score;
+        scoreDisplay.textContent = t('scorePrefix') + state.score;
         state.currentSpeed = Math.max(70, state.baseSpeed - Math.floor(state.score / 50) * 5);
         if (state.score > state.highScore) {
             state.highScore = state.score;
             localStorage.setItem('snakeHighScore', state.highScore);
-            highScoreDisplay.textContent = 'Hi: ' + state.highScore;
+            highScoreDisplay.textContent = t('hiPrefix') + state.highScore;
         }
         spawnFood();
     } else {
@@ -573,6 +1018,9 @@ function checkCollision(head) {
     return state.snake.some(segment => segment.x === head.x && segment.y === head.y);
 }
 
+// ═══════════════════════════════════════════════
+// LEADERBOARD
+// ═══════════════════════════════════════════════
 function loadLeaderboard() {
     try {
         const data = localStorage.getItem('snakeLeaderboard');
@@ -602,22 +1050,39 @@ function saveToLeaderboard(name) {
     updateLeaderboardUI();
 }
 
+function translateDifficulty(diffStr) {
+    // diffStr is like "Grid:20 Spd:150"
+    const parts = diffStr.split(' ');
+    if (parts.length !== 2) return diffStr;
+    const gridPart = parts[0]; // "Grid:20"
+    const spdPart = parts[1];  // "Spd:150"
+    const gridVal = gridPart.split(':')[1];
+    const spdVal = spdPart.split(':')[1];
+    const speedLabel = spdVal === '200' ? t('slow') : spdVal === '150' ? t('norm') : t('fast');
+    return `${gridVal}×${gridVal} ${speedLabel}`;
+}
+
 function updateLeaderboardUI() {
     const list = document.getElementById('leaderboardList');
     const board = loadLeaderboard();
     list.innerHTML = '';
 
     if (board.length === 0) {
-        list.innerHTML = '<div style="text-align:center; padding: 20px 0;">No scores yet! Play a game.</div>';
+        list.innerHTML = `<div style="text-align:center; padding: 20px 0;">${t('noScores')}</div>`;
         return;
     }
 
     board.forEach((entry, idx) => {
         const div = document.createElement('div');
         div.className = 'leaderboard-entry';
+        const themeDisplay = themeName(entry.theme);
+        const diffDisplay = entry.difficulty ? translateDifficulty(entry.difficulty) : '';
         div.innerHTML = `
             <span>#${idx + 1} <b>${entry.name}</b></span>
-            <span style="text-align: right;">${entry.score}pts<br><small style="font-size: 9px;">${entry.theme} | ${entry.difficulty} | ${entry.date}</small></span>
+            <span style="text-align: ${state.language === 'he' ? 'left' : 'right'};">
+                ${entry.score}pts<br>
+                <small style="font-size: 9px;">${themeDisplay} | ${diffDisplay} | ${entry.date}</small>
+            </span>
         `;
         list.appendChild(div);
     });
@@ -630,14 +1095,17 @@ function isTop10(score) {
     return score > board[board.length - 1].score;
 }
 
+// ═══════════════════════════════════════════════
+// GAME END
+// ═══════════════════════════════════════════════
 function endGame() {
     state.gameOver = true;
     if (state.theme === 'kids') {
-        gameOverText.textContent = 'Oh no! Try again?';
+        gameOverText.textContent = t('kidsGameOver');
     } else {
-        gameOverText.textContent = 'GAME OVER';
+        gameOverText.textContent = t('gameOver');
     }
-    finalScore.textContent = 'Score: ' + state.score;
+    finalScore.textContent = t('finalScorePrefix') + state.score;
 
     if (isTop10(state.score)) {
         highScoreEntry.style.display = 'flex';
@@ -664,119 +1132,49 @@ document.getElementById('saveScoreBtn').addEventListener('click', () => {
     restartBtn.style.display = 'block';
 });
 
-// Menu Logic Setup
-function updateDifficultyUI() {
-    document.getElementById('sizeSmallBtn').classList.toggle('selected', state.gridSize === 15);
-    document.getElementById('sizeMedBtn').classList.toggle('selected', state.gridSize === 20);
-    document.getElementById('sizeLargeBtn').classList.toggle('selected', state.gridSize === 25);
-
-    document.getElementById('speedSlowBtn').classList.toggle('selected', state.baseSpeed === 200);
-    document.getElementById('speedNormBtn').classList.toggle('selected', state.baseSpeed === 150);
-    document.getElementById('speedFastBtn').classList.toggle('selected', state.baseSpeed === 100);
-}
-updateDifficultyUI();
-updateLeaderboardUI();
-
-document.getElementById('playBtn').addEventListener('click', () => {
-    initGame();
-});
-
-document.getElementById('menuBtn').addEventListener('click', () => {
-    overlay.classList.remove('active');
-    mainMenu.classList.add('active');
-});
-
-document.getElementById('showLeaderboardBtn').addEventListener('click', () => {
-    updateLeaderboardUI();
-    leaderboardScreen.classList.add('active');
-    mainMenu.classList.remove('active');
-});
-
-document.getElementById('backToMenuBtn').addEventListener('click', () => {
-    leaderboardScreen.classList.remove('active');
-    mainMenu.classList.add('active');
-});
-
-document.getElementById('clearLeaderboardBtn').addEventListener('click', () => {
-    if (confirm("Are you sure you want to clear the leaderboard?")) {
-        localStorage.removeItem('snakeLeaderboard');
-        updateLeaderboardUI();
-    }
-});
-
-// Settings Handlers
-document.getElementById('themeClassicBtn').addEventListener('click', () => applyTheme('classic'));
-document.getElementById('themeKidsBtn').addEventListener('click', () => applyTheme('kids'));
-
-function setGridSize(size) {
-    state.gridSize = size;
-    localStorage.setItem('snakeGridSize', size);
-    updateDifficultyUI();
-}
-
-document.getElementById('sizeSmallBtn').addEventListener('click', () => setGridSize(15));
-document.getElementById('sizeMedBtn').addEventListener('click', () => setGridSize(20));
-document.getElementById('sizeLargeBtn').addEventListener('click', () => setGridSize(25));
-
-function setSpeed(speed) {
-    state.baseSpeed = speed;
-    localStorage.setItem('snakeSpeed', speed);
-    updateDifficultyUI();
-}
-
-document.getElementById('speedSlowBtn').addEventListener('click', () => setSpeed(200));
-document.getElementById('speedNormBtn').addEventListener('click', () => setSpeed(150));
-document.getElementById('speedFastBtn').addEventListener('click', () => setSpeed(100));
-
-
+// ═══════════════════════════════════════════════
+// DRAWING (theme-aware)
+// ═══════════════════════════════════════════════
 function draw() {
-    // Get colors from CSS variables
-    const bgColor = getComputedStyle(document.body).getPropertyValue('--bg').trim() || '#9bbc0f';
-    const snakeColor = getComputedStyle(document.body).getPropertyValue('--snake').trim() || '#0f380f';
-    const foodColor = getComputedStyle(document.body).getPropertyValue('--food').trim() || '#0f380f';
-    const isKids = state.theme === 'kids';
+    const bgColor = getCSS('--bg');
+    const def = THEME_DEFS[state.theme];
 
     // Clear canvas
     ctx.fillStyle = bgColor;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw grid dots for Kids Theme
-    if (isKids) {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
-        for (let x = 0; x < state.gridSize; x++) {
-            for (let y = 0; y < state.gridSize; y++) {
-                ctx.beginPath();
-                ctx.arc(x * CELL_SIZE + CELL_SIZE / 2, y * CELL_SIZE + CELL_SIZE / 2, 2, 0, Math.PI * 2);
-                ctx.fill();
-            }
-        }
+    // Theme-specific background
+    if (def && def.drawBackground) {
+        def.drawBackground(ctx, state.gridSize, CELL_SIZE);
     }
 
     // Draw snake
-    ctx.fillStyle = snakeColor;
-    state.snake.forEach(segment => {
-        if (isKids) {
-            ctx.beginPath();
-            ctx.roundRect(segment.x * CELL_SIZE + 1, segment.y * CELL_SIZE + 1, CELL_SIZE - 2, CELL_SIZE - 2, 4);
-            ctx.fill();
+    state.snake.forEach((segment, idx) => {
+        if (def && def.drawSegment) {
+            def.drawSegment(ctx, segment, idx, state.snake, CELL_SIZE);
         } else {
+            // Default rendering
+            const snakeColor = getCSS('--snake');
+            ctx.fillStyle = snakeColor;
             ctx.fillRect(segment.x * CELL_SIZE, segment.y * CELL_SIZE, CELL_SIZE - 1, CELL_SIZE - 1);
         }
     });
 
-    // Draw food
-    if (isKids) {
-        ctx.font = `${CELL_SIZE - 2}px Arial`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('🍎', state.food.x * CELL_SIZE + CELL_SIZE / 2, state.food.y * CELL_SIZE + CELL_SIZE / 2 + 2);
-    } else {
-        ctx.fillStyle = foodColor;
-        ctx.fillRect(state.food.x * CELL_SIZE + 2, state.food.y * CELL_SIZE + 2, CELL_SIZE - 5, CELL_SIZE - 5);
+    // Draw food (only if in valid position)
+    if (state.food.x >= 0 && state.food.y >= 0) {
+        if (def && def.drawFood) {
+            def.drawFood(ctx, state.food, CELL_SIZE);
+        } else {
+            const foodColor = getCSS('--food');
+            ctx.fillStyle = foodColor;
+            ctx.fillRect(state.food.x * CELL_SIZE + 2, state.food.y * CELL_SIZE + 2, CELL_SIZE - 5, CELL_SIZE - 5);
+        }
     }
 }
 
-// Input handling
+// ═══════════════════════════════════════════════
+// INPUT HANDLING
+// ═══════════════════════════════════════════════
 function setDirection(x, y) {
     if (state.direction.x !== -x || state.direction.y !== -y) {
         state.nextDirection = {x, y};
@@ -784,7 +1182,6 @@ function setDirection(x, y) {
 }
 
 window.addEventListener('keydown', e => {
-    // If typing in input, ignore game controls
     if (document.activeElement === playerNameInput) {
         return;
     }
@@ -799,26 +1196,10 @@ window.addEventListener('keydown', e => {
     }
 
     switch (e.key) {
-        case 'ArrowUp':
-        case 'w':
-        case 'W':
-            setDirection(0, -1);
-            break;
-        case 'ArrowDown':
-        case 's':
-        case 'S':
-            setDirection(0, 1);
-            break;
-        case 'ArrowLeft':
-        case 'a':
-        case 'A':
-            setDirection(-1, 0);
-            break;
-        case 'ArrowRight':
-        case 'd':
-        case 'D':
-            setDirection(1, 0);
-            break;
+        case 'ArrowUp': case 'w': case 'W': setDirection(0, -1); break;
+        case 'ArrowDown': case 's': case 'S': setDirection(0, 1); break;
+        case 'ArrowLeft': case 'a': case 'A': setDirection(-1, 0); break;
+        case 'ArrowRight': case 'd': case 'D': setDirection(1, 0); break;
     }
 });
 
@@ -837,9 +1218,7 @@ restartBtn.addEventListener('touchstart', e => {
 });
 
 // Swipe detection
-let startX = 0;
-let startY = 0;
-
+let startX = 0, startY = 0;
 canvas.addEventListener('touchstart', e => {
     e.preventDefault();
     startX = e.touches[0].clientX;
@@ -852,7 +1231,6 @@ canvas.addEventListener('touchend', e => {
 
     let endX = e.changedTouches[0].clientX;
     let endY = e.changedTouches[0].clientY;
-
     let dx = endX - startX;
     let dy = endY - startY;
 
@@ -884,9 +1262,85 @@ document.addEventListener("visibilitychange", () => {
     }
 });
 
-// Initialize
+// ═══════════════════════════════════════════════
+// MENU EVENT HANDLERS
+// ═══════════════════════════════════════════════
+function updateDifficultyUI() {
+    document.getElementById('sizeSmallBtn').classList.toggle('selected', state.gridSize === 15);
+    document.getElementById('sizeMedBtn').classList.toggle('selected', state.gridSize === 20);
+    document.getElementById('sizeLargeBtn').classList.toggle('selected', state.gridSize === 25);
+
+    document.getElementById('speedSlowBtn').classList.toggle('selected', state.baseSpeed === 200);
+    document.getElementById('speedNormBtn').classList.toggle('selected', state.baseSpeed === 150);
+    document.getElementById('speedFastBtn').classList.toggle('selected', state.baseSpeed === 100);
+}
+
+document.getElementById('playBtn').addEventListener('click', () => {
+    initGame();
+});
+
+document.getElementById('menuBtn').addEventListener('click', () => {
+    overlay.classList.remove('active');
+    mainMenu.classList.add('active');
+});
+
+document.getElementById('showLeaderboardBtn').addEventListener('click', () => {
+    updateLeaderboardUI();
+    leaderboardScreen.classList.add('active');
+    mainMenu.classList.remove('active');
+});
+
+document.getElementById('backToMenuBtn').addEventListener('click', () => {
+    leaderboardScreen.classList.remove('active');
+    mainMenu.classList.add('active');
+});
+
+document.getElementById('clearLeaderboardBtn').addEventListener('click', () => {
+    if (confirm(t('confirmClear'))) {
+        localStorage.removeItem('snakeLeaderboard');
+        updateLeaderboardUI();
+    }
+});
+
+// Theme buttons (data-driven)
+document.querySelectorAll('#themeButtons .menu-btn').forEach(btn => {
+    btn.addEventListener('click', () => applyTheme(btn.dataset.theme));
+});
+
+// Grid size
+function setGridSize(size) {
+    state.gridSize = size;
+    localStorage.setItem('snakeGridSize', size);
+    updateDifficultyUI();
+}
+document.getElementById('sizeSmallBtn').addEventListener('click', () => setGridSize(15));
+document.getElementById('sizeMedBtn').addEventListener('click', () => setGridSize(20));
+document.getElementById('sizeLargeBtn').addEventListener('click', () => setGridSize(25));
+
+// Speed
+function setSpeed(speed) {
+    state.baseSpeed = speed;
+    localStorage.setItem('snakeSpeed', speed);
+    updateDifficultyUI();
+}
+document.getElementById('speedSlowBtn').addEventListener('click', () => setSpeed(200));
+document.getElementById('speedNormBtn').addEventListener('click', () => setSpeed(150));
+document.getElementById('speedFastBtn').addEventListener('click', () => setSpeed(100));
+
+// Language buttons
+document.getElementById('langEnBtn').addEventListener('click', () => setLanguage('en'));
+document.getElementById('langHeBtn').addEventListener('click', () => setLanguage('he'));
+
+// ═══════════════════════════════════════════════
+// INITIALIZATION
+// ═══════════════════════════════════════════════
+updateAllUI();
+applyTheme(state.theme);
+updateDifficultyUI();
+updateLeaderboardUI();
 resize();
-// Don't auto-start the game. Draw an initial state for the background.
+
+// Don't auto-start — draw menu state background
 const initialCenterX = Math.floor(state.gridSize / 2);
 const initialCenterY = Math.floor(state.gridSize / 2);
 state.snake = [
@@ -894,7 +1348,7 @@ state.snake = [
     {x: initialCenterX - 1, y: initialCenterY},
     {x: initialCenterX - 2, y: initialCenterY}
 ];
-state.food = { x: -1, y: -1 }; // Hide food initially
+state.food = { x: -1, y: -1 };
 draw();
 
 </script>
