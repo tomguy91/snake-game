@@ -4,6 +4,15 @@
 
 ---
 
+## ⚠️ Workflow Rule (CRITICAL)
+
+**ALWAYS use Jules for implementation.** The orchestrator (Hermes) plans and decomposes work into small parallel subtasks; Jules opens PRs for each. Never do implementation work inline in the main agent loop. If Jules is not suitable for a specific task, use `delegate_task` to spawn subagents.
+
+- Jules limits: 100 tasks/day, max 15 parallel, 10 connected repos
+- API: `sourceContext{source:"sources/github/o/r",githubRepoContext:{startingBranch}}`
+
+---
+
 ## Project Overview
 
 Single-file HTML5 Canvas Snake game (`index.html`) with CSS theme system, localStorage persistence, Hebrew/RTL i18n, and extensible per-theme drawing logic. Zero dependencies.
